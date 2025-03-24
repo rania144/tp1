@@ -1,0 +1,30 @@
+name: 🚀 Déploiement Automatisé avec Ansible
+
+on:
+  push:
+    branches:
+      - main  # Déclenche le déploiement à chaque push sur 'main'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛎️ Récupérer le code
+        uses: actions/checkout@v2
+
+      - name: 🔑 Ajouter la clé SSH pour la connexion
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AZURE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AZURE_VM_IP }} >> ~/.ssh/known_hosts
+
+      - name: 📂 Copier les fichiers Ansible sur la VM
+        run: |
+          scp -i ~/.ssh/id_rsa -r ansible/ azureuser@${{ secrets.AZURE_VM_IP }}:/home/azureuser/
+
+      - name: 🚀 Exécuter Ansible sur la VM
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@${{ secrets.AZURE_VM_IP }} "ansible-playbook -i /home/azureuser/ansible/inventory.ini /home/azureuser/ansible/deploy.yml"
+
